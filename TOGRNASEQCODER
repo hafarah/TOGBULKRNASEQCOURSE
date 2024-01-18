@@ -1,0 +1,97 @@
+#Installing all needed packages
+install.packages(c("tidyverse", "here", "rmarkdown", "knitr", "kableExtra", "janitor", "scales", "ggpubr",
+                   "pheatmap", "reshape2"))
+
+install.packages("BiocManager")
+
+BiocManager::install(c("clusterProfiler", "biomaRt", "edgeR", "limma", "Rsubread"))
+install.packages(c("biomaRt", "dbplyr"))
+
+remotes::install_github("wvictor14/plomics")
+install.packages("formatR")
+install.packages("dbplyr", dependencies = TRUE)
+
+remove.packages(c("biomaRt", "dbplyr"))
+install.packages(c("biomaRt", "dbplyr"))
+
+
+install.packages("biomaRt", dependencies = TRUE)
+#Libraries to call
+library(clusterProfiler)
+library(dbplyr)
+library(biomaRt)
+library(formatR)
+library(limma)
+library(BiocManager)
+library(BiocVersion)
+library(edgeR)
+library(Rsubread)
+library(plomics)
+library(tidyverse)
+opts_chunk$set(tidy.opts=list(width.cutoff=100))
+library(here)
+library(rmarkdown)
+library(knitr)
+library(kableExtra)
+library(janitor)
+library(scales)
+library(ggpubr)
+library(pheatmap)
+library(reshape2)
+library(Rsubread)
+conflicts()
+#check the available arguments and options available for the featureCounts functions by running ?featureCounts in your console)
+
+#command 1 This is to align the FASTQ file to the 
+#Using the here command from the "here" packagem, Go to the data folder and get the BAM file HG00097.mapped. This is from the 1000 genomes project and is the reference genome used by the authors
+#They are using pair ended data
+#aligned <- featureCounts(here::here("data", "HG00097.mapped.ILLUMINA.bwa.GBR.exome.20130415.bam"), annot.inbuilt = "hg19", isPairedEnd = TRUE)  
+aligned <- readRDS(here::here("data", "BAM_R_obj.RDS"))
+#This simply brings out the expression counts from the aligned file. It brings out entre IDs
+expression_counts <- aligned$counts
+
+#Loading data, here we have labelled the file eDat. We read the delimited file from the data folder
+#The file is delimited by tabs so specify this with sep = "\t"
+
+eDat <-read.delim(here::here("data", "GSE157103_formatted_eDat.txt"), sep = "\t")
+pDat <- read.delim(here::here("data", "GSE157103_formatted_pDat.txt"), sep = "\t")
+dim(eDat)
+dim(pDat)
+#You can so use tibble package to look at data frame
+
+pDat %>%
+  kable()
+pDat %>%
+  as_tibble()
+
+#converting our column with all the gene names to assigned row names -- we require certain identifiers (such as gene/sample names) as column and row names and not as a separate column or row for a few analyses downstream
+eDat <- eDat %>%  
+  column_to_rownames(var = "gene")
+
+#Do the column names of our expression dataframe (our samples names) match the order of the rows in the ID column of the phenotype dataframe
+all(colnames(eDat) == pDat$ID)
+
+#Look at the names of the object
+names(pDat)
+
+#Count the number of COVID patients by sex using dplyr package
+
+pDat %>%
+  dplyr::count(COVID, Sex)
+
+# Change age from continous variable to catergorical variables using bins
+
+pDat <- pDat %>% 
+  mutate(Age_bracket = case_when(
+    Age < 20 ~ "below_20",
+    between(Age, 21, 40) ~ "21-40",
+    between(Age, 41, 60) ~ "41-60",
+    Age > 60 ~ "above_60"
+  ))
+
+pDat$Age_bracket <- as.factor(pDat$Age_bracket)
+
+# Look at the data table
+
+pDat %>% 
+  dplyr::count(COVID, Age_bracket)
